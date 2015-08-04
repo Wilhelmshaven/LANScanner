@@ -3,7 +3,7 @@
 
 Device::Device()
 {
-	//初始化变量
+	// 初始化变量
 	ip_addr = new char[16];
 	ip_netmask = new char[16];
 	mac = new char[17];
@@ -17,29 +17,29 @@ Device::Device()
 
 Device::~Device()
 {
-	if (adhandle != NULL) pcap_close(adhandle); //关闭打开的网卡
-	pcap_freealldevs(alldevs);    //释放设备列表
+	if (adhandle != NULL) pcap_close(adhandle); // 关闭打开的网卡
+	pcap_freealldevs(alldevs);                  // 释放设备列表
 }
 
 void Device::findCurrentDevice(int option)
 {
-	//确定哪块网卡被选中，并打开它
+	// 确定哪块网卡被选中，并打开它
 	pcap_if_t *d;
 	
 	d = alldevs;
-	for (int i = 0; i < option; i++)d = d->next;//跳转到指定网卡
+	for (int i = 0; i < option; i++)d = d->next; // 跳转到指定网卡
 
-	OpenDevice(d);                     //打开网卡
-	GetInfo(d, ip_addr, ip_netmask);   //获得自己的IP与掩码
+	OpenDevice(d);                               // 打开网卡
+	GetInfo(d, ip_addr, ip_netmask);             // 获得自己的IP与掩码
 }
 
-//获得自己的IP与掩码
+// 获得自己的IP与掩码
 void Device::GetInfo(pcap_if_t *d, char *ip_addr, char *ip_netmask)
 {
 	pcap_addr_t *a;
 	for (a = d->addresses; a; a = a->next)
 	{
-		if (a->addr->sa_family == AF_INET)//internetwork: UDP, TCP, etc. 即取IP包
+		if (a->addr->sa_family == AF_INET)       // internetwork: UDP, TCP, etc. 即取IP包
 		{
 			if (a->addr)
 			{
@@ -57,7 +57,7 @@ void Device::GetInfo(pcap_if_t *d, char *ip_addr, char *ip_netmask)
 	}
 }
 
-//打开设备
+// 打开设备
 int Device::OpenDevice(pcap_if_t *d)
 {
 	if ((adhandle = pcap_open(d->name,          // 设备名
@@ -69,7 +69,7 @@ int Device::OpenDevice(pcap_if_t *d)
 					   errbuf            // 错误缓冲池
 					   )) == NULL)
 	{
-		pcap_freealldevs(alldevs);//释放设备列表
+		pcap_freealldevs(alldevs);       // 释放设备列表
 		return -1;
 	}
 	else return 0;

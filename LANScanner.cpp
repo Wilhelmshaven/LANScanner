@@ -57,7 +57,7 @@ ATOM				MyRegisterClass(HINSTANCE hInstance);
 BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK DlgProc(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam);           // 子窗口
+INT_PTR CALLBACK    DlgProc(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam);        // 子窗口
 UINT SendArpPacket(LPVOID lpParameter);                                                // 收包方法
 UINT AnalyzePacket(LPVOID lpParameter);                                                // 发包方法
 BOOL AddListViewItems(HWND hwndListView, char *ip_add, char *mac_add, char *delay);    // 把结果输出到ListView中
@@ -158,7 +158,32 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
         // 创建子对话框并将其作为主窗口
         myhdlg = CreateDialog(hInst, MAKEINTRESOURCE(IDD_FORMVIEW), hWnd, (DLGPROC)DlgProc);
-        ShowWindow(myhdlg, SW_SHOW);// 显示对话框
+        ShowWindow(myhdlg, SW_SHOW);                                  // 显示子对话框
+
+		// 美化程序
+		// 设置标题字体样式：这部分必须放在主窗口处理
+		LOGFONT TitleFont;
+		ZeroMemory(&TitleFont, sizeof(TitleFont));                    // 这个必须做，清除乱七八糟的初值
+		lstrcpy(TitleFont.lfFaceName, "Segoe Script");                // 设置字体
+		TitleFont.lfWeight = FW_BOLD;                                 // 粗细，BOLD=700，写过CSS都知道
+		TitleFont.lfHeight = -20;                                     // 字体大小，这个很有讲究……
+		TitleFont.lfCharSet = DEFAULT_CHARSET;                        // 默认字符集
+		TitleFont.lfOutPrecision = OUT_DEVICE_PRECIS;                 // 输出精度
+
+		HFONT hFont = CreateFontIndirect(&TitleFont);
+		HWND hWndStatic = GetDlgItem(myhdlg, IDC_TITLE);
+		SendMessage(hWndStatic, WM_SETFONT, (WPARAM)hFont, 0);
+
+		// 设置类目字体样式
+		LOGFONT TextFont;
+		ZeroMemory(&TextFont, sizeof(TextFont));
+		lstrcpy(TextFont.lfFaceName, "Gabriola");
+		TextFont.lfHeight = -16;
+		hFont = CreateFontIndirect(&TextFont);
+
+		// 设置控件字体
+		hWndStatic = GetDlgItem(myhdlg, IDC_STATIC);
+		SendMessage(hWndStatic, WM_SETFONT, (WPARAM)hFont, 0);
     }
     case WM_COMMAND:
         wmId = LOWORD(wParam);
@@ -233,34 +258,42 @@ INT_PTR CALLBACK DlgProc(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
     HWND hListview = GetDlgItem(hdlg, IDC_LIST3);       // ListView
     HWND hWndComboBox = GetDlgItem(hdlg, IDC_COMBO1);   // ComboBox
     HWND EditBox;                                       // EditBox
-    
+	HWND hProgressBar = NULL;                           // 进度条
+
     switch (msg)
     {
     case WM_INITDIALOG:
     {
         // 添加Listview的列与下拉框数据
 
-        // 设置ListView的列  
-        LVCOLUMN lvc;
-        lvc.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+        // 创建并美化
+		LVCOLUMN lvc;
+		lvc.mask = LVCF_FMT | LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+		ListView_SetTextColor(hListview, RGB(0, 0, 255));                // 设置文字颜色
+		ListView_SetTextBkColor(hListview, RGB(199, 237, 204));          // 设置文字背景颜色
+		ListView_SetExtendedListViewStyle(hListview, LVS_EX_GRIDLINES);  // 添加导航线
 
-        lvc.pszText = "IP Address";//列标题  
-        lvc.cx = 140;//列宽  
-        lvc.iSubItem = 0;//子项索引，第一列无子项  
+		// 设置ListView的列  
+        lvc.pszText = "IP Address";                 // 列标题  
+        lvc.cx = 0;                                 // 列宽  
+        lvc.iSubItem = 0;                           // 子项索引，第一列无子项  
         lvc.fmt = LVCFMT_CENTER;
-        ListView_InsertColumn(hListview, 0, &lvc);
+        ListView_InsertColumn(hListview, 0, &lvc);  // 空列占位，保证字体居中
+		lvc.cx = 140;
+		lvc.iSubItem = 1;
+		ListView_InsertColumn(hListview, 1, &lvc);
 
         lvc.pszText = "MAC Address";
         lvc.cx = 160;
-        lvc.iSubItem = 1;//子项索引  
+        lvc.iSubItem = 2; 
         lvc.fmt = LVCFMT_CENTER;
-        ListView_InsertColumn(hListview, 1, &lvc);
+        ListView_InsertColumn(hListview, 2, &lvc);
 
         lvc.pszText = "Arp Time";
         lvc.cx = 100;
-        lvc.iSubItem = 2;
+        lvc.iSubItem = 3;
         lvc.fmt = LVCFMT_CENTER;
-        ListView_InsertColumn(hListview, 2, &lvc);
+        ListView_InsertColumn(hListview, 3, &lvc);
 
         // 给下拉列表填充项目
         pcap_if_t *d;
@@ -268,6 +301,10 @@ INT_PTR CALLBACK DlgProc(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
         {
             SendMessage(hWndComboBox, CB_ADDSTRING, 0, (LPARAM)d->description);
         }
+
+		// 创建进度条
+		hProgressBar = CreateWindowEx(0, PROGRESS_CLASS, (LPSTR)NULL, WS_CHILD | WS_VISIBLE, 0, 0, 0, 0,
+			hdlg, (HMENU)IDC_PROG, (HINSTANCE)GetWindowLong(hdlg, GWL_HINSTANCE), NULL);
 
         return 0;
     }// WM_INITDIALOG
@@ -330,6 +367,14 @@ UINT SendArpPacket(LPVOID lpParameter)
 	{
 		WaitForSingleObject(hAgain, INFINITE);
 
+		// 进度条初始化
+		HWND myhdlg = sp.myDlg;
+		HWND hPB = GetDlgItem(myhdlg, IDC_PROG);
+		double Percent;
+		int NowPos;
+		SendMessage(hPB, PBM_SETRANGE, 0, MAKELPARAM(0, 100));   //范围 
+		SendMessage(hPB, PBM_SETPOS, 0, 0);                      //复位
+
 		sparam *spara = &sp;
 		pcap_t *adhandle = spara->adhandle;
 
@@ -356,8 +401,14 @@ UINT SendArpPacket(LPVOID lpParameter)
 		inet_pton(AF_INET, netmask, &mynetmask);
 		unsigned long dest_ip = htonl((myip&mynetmask));
 
+		NowPos = SendMessage(hPB, PBM_GETPOS, 0, 0);
 		for (int i = 0; i < 256; i++)                  // 遍历子网中的IP
-		{
+		{	
+			// 按指定增量推进进度条
+			Percent = i * 100 / 256;	
+			SendMessage(hPB, PBM_DELTAPOS, Percent - NowPos, 0);
+			NowPos = Percent;
+
 			ah.dest_ip_add = htonl(dest_ip + i);       // 随i值变化遍历子网
 
 			// 把做好的数据包装入缓存
@@ -375,6 +426,7 @@ UINT SendArpPacket(LPVOID lpParameter)
 		SetEvent(hEvent);
 		ResetEvent(hAgain);
 		Beep(440, 200);
+		SendMessage(hPB, PBM_SETPOS, 100, 0);
 	}
 
     return 0;
@@ -482,8 +534,9 @@ BOOL AddListViewItems(HWND hwndListView, char *ip_add, char *mac_add, char *dela
 
     // 插入列
     ListView_InsertItem(hwndListView, &lvi);
-    ListView_SetItemText(hwndListView, 0, 1, mac_add);
-    ListView_SetItemText(hwndListView, 0, 2, delay);
+	ListView_SetItemText(hwndListView, 0, 1, ip_add);
+    ListView_SetItemText(hwndListView, 0, 2, mac_add);
+    ListView_SetItemText(hwndListView, 0, 3, delay);
 
     return TRUE;
 }

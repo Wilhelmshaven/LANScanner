@@ -28,8 +28,8 @@
 #include <cstring>
 #include "pcap.h"
 
-#pragma comment(lib,"ws2_32.lib")
-#pragma comment(lib,"wpcap.lib")
+//#pragma comment(lib,"ws2_32.lib")
+//#pragma comment(lib,"wpcap.lib")
 #include <commctrl.h>  //Listview
 
 #pragma pack(1)  //按一个字节内存对齐
