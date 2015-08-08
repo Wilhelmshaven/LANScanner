@@ -8,12 +8,6 @@
 *                                                            *
 * Hongjie Li                    2014.10.19                   *
 * Signature						Date                         *
-*                                                            *
-* 李宏杰   			            143020085211001              *
-* Name						    Student ID                   *
-*                                                            *
-* CS400            	Advanced Windows Network Programming     *
-* Course code	    Course title                             *
 *************************************************************/
 // LANScanner.cpp : 定义应用程序的入口点。
 
@@ -363,26 +357,27 @@ INT_PTR CALLBACK DlgProc(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 /* 向局域网内所有可能的IP地址发送ARP请求包线程 */
 UINT SendArpPacket(LPVOID lpParameter)
 {
+	HWND myhdlg, hPB;
+	double Percent;
+	int NowPos;
+	unsigned char *sendbuf = new unsigned char[42];  // arp包结构大小，这里不计入padding和fcs
+	ethernet_head eh;
+	arp_head ah;
+
 	while (true)
 	{
 		WaitForSingleObject(hAgain, INFINITE);
 
 		// 进度条初始化
-		HWND myhdlg = sp.myDlg;
-		HWND hPB = GetDlgItem(myhdlg, IDC_PROG);
-		double Percent;
-		int NowPos;
-		SendMessage(hPB, PBM_SETRANGE, 0, MAKELPARAM(0, 100));   //范围 
-		SendMessage(hPB, PBM_SETPOS, 0, 0);                      //复位
+		myhdlg = sp.myDlg;
+		hPB = GetDlgItem(myhdlg, IDC_PROG);
+		
+		SendMessage(hPB, PBM_SETRANGE, 0, MAKELPARAM(0, 100));   // 范围 
+		SendMessage(hPB, PBM_SETPOS, 0, 0);                      // 复位
 
-		sparam *spara = &sp;
-		pcap_t *adhandle = spara->adhandle;
-
-		char *ip = spara->ip;                            // 自己的IP
-		char *netmask = spara->netmask;                  // 自己的NETMASK
-		unsigned char *sendbuf = new unsigned char[42];  // arp包结构大小，这里不计入padding和fcs
-		ethernet_head eh;
-		arp_head ah;
+		pcap_t *adhandle = sp.adhandle;
+		char *ip = sp.ip;                            // 自己的IP
+		char *netmask = sp.netmask;                  // 自己的NETMASK				
 
 		// 填充内容
 		eh.type = htons(ETH_ARP);
@@ -417,8 +412,6 @@ UINT SendArpPacket(LPVOID lpParameter)
 			memcpy(sendbuf + sizeof(eh), &ah, sizeof(ah));
 
 			pcap_sendpacket(adhandle, sendbuf, 42);    // 发包
-
-			//Sleep(10);                                 // 让网卡休息一会儿
 		}
 
 		// 设置Event通知收包线程发包已结束
@@ -429,12 +422,18 @@ UINT SendArpPacket(LPVOID lpParameter)
 		SendMessage(hPB, PBM_SETPOS, 100, 0);
 	}
 
+	delete []sendbuf;
+
     return 0;
 }
 
 /* 分析截留的数据包获取活动的主机IP地址 */
 UINT AnalyzePacket(LPVOID lpParameter)
 {
+	char *mac_add = new char[18];
+	char *ip_add = new char[16];
+	char *delay = new char[8];
+
 	while (true)
 	{
 		WaitForSingleObject(hAgain, INFINITE);
@@ -442,9 +441,7 @@ UINT AnalyzePacket(LPVOID lpParameter)
 		sparam *spara = &sp;
 		pcap_t *adhandle = spara->adhandle;
 		int res;
-		char *mac_add = new char[];
-		char *ip_add = new char[];
-		char *delay = new char[];
+		
 		pcap_pkthdr * pkt_header;
 		const u_char * pkt_data;
 		double delayTime;
@@ -517,6 +514,11 @@ UINT AnalyzePacket(LPVOID lpParameter)
 		MessageBox(NULL, "嗅探结束！", "提示", MB_OK);
 		ResetEvent(hEvent);
 	}
+
+	delete[]mac_add;
+	delete[]ip_add;
+	delete[]delay;
+
     return 0;
 }
 

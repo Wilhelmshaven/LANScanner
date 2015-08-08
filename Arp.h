@@ -81,7 +81,7 @@ public:
 	// 将数字类型的IP地址转换成字符串类型的
 	char *iptos(u_long in, int type)// type:1 for IP
 	{
-		char *ipstr = new char[16];
+		char ipstr[16];
 		u_char *p;
 		p = (u_char *)&in;// 这部分通过指针类型的改变实现了转换过程
 		sprintf(ipstr, "%d.%d.%d.%d", p[0], p[1], p[2], p[3]);

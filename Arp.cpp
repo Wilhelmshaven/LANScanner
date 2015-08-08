@@ -6,7 +6,7 @@ Device::Device()
 	// 初始化变量
 	ip_addr = new char[16];
 	ip_netmask = new char[16];
-	mac = new char[17];
+	mac = new char[18];
 	errbuf = new char[PCAP_ERRBUF_SIZE];
 	select = 0;
 	adhandle = NULL;
